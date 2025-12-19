@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, AlertCircle, Lock, Mail, User } from 'lucide-react';
+import { Loader2, AlertCircle, Lock, Mail, User } from 'lucide-react';
 import { registerSchema, type RegisterFormData } from '@/schemas/auth.schema';
 import { authService } from '@/api/services/auth.service';
 
@@ -41,7 +41,13 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await authService.register(formData);
+      await authService.register(result.data as {
+        email: string;
+        password: string;
+        password_confirm: string;
+        first_name: string;
+        last_name: string;
+      });
       
       // Show success message and redirect to login
       navigate('/login', { 
@@ -96,12 +102,12 @@ const Register: React.FC = () => {
 
       <div className="w-full max-w-md relative animate-fade-in">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-1 mb-8 group">
-          <span className="text-3xl font-bold text-foreground tracking-tight">
-            Audit
-          </span>
-          <span className="text-3xl font-bold text-accent">Flow</span>
-          <ArrowRight className="h-6 w-6 text-accent -ml-1 transition-transform group-hover:translate-x-1" />
+        <div className="flex items-center justify-center mb-8">
+          <img 
+            src="/logo/auditflow-logo.png" 
+            alt="AuditFlow" 
+            className="h-8 w-auto"
+          />
         </div>
 
         <Card className="border-border/50 shadow-elevated">
@@ -231,10 +237,7 @@ const Register: React.FC = () => {
                     Creating account...
                   </>
                 ) : (
-                  <>
-                    Create account
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
+                  'Create account'
                 )}
               </Button>
             </form>

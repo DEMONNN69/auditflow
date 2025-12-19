@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, AlertCircle, Lock, Mail } from 'lucide-react';
+import { Loader2, AlertCircle, Lock, Mail } from 'lucide-react';
 import { loginSchema, type LoginFormData } from '@/schemas/auth.schema';
 
 const Login: React.FC = () => {
@@ -49,7 +49,7 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(formData);
+      await login(result.data as { email: string; password: string });
       navigate(from, { replace: true });
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -79,12 +79,12 @@ const Login: React.FC = () => {
 
       <div className="w-full max-w-md relative animate-fade-in">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-1 mb-8 group">
-          <span className="text-3xl font-bold text-foreground tracking-tight">
-            Audit
-          </span>
-          <span className="text-3xl font-bold text-accent">Flow</span>
-          <ArrowRight className="h-6 w-6 text-accent -ml-1 transition-transform group-hover:translate-x-1" />
+        <div className="flex items-center justify-center mb-8">
+          <img 
+            src="/logo/auditflow-logo.png" 
+            alt="AuditFlow" 
+            className="h-8 w-auto"
+          />
         </div>
 
         <Card className="border-border/50 shadow-elevated">
@@ -154,10 +154,7 @@ const Login: React.FC = () => {
                     Signing in...
                   </>
                 ) : (
-                  <>
-                    Sign in
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
+                  'Sign in'
                 )}
               </Button>
             </form>

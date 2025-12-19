@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Home } from "lucide-react";
+import { Home } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -19,12 +19,12 @@ const NotFound = () => {
 
       <div className="text-center relative animate-fade-in">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-1 mb-8 group">
-          <span className="text-2xl font-bold text-foreground tracking-tight">
-            Audit
-          </span>
-          <span className="text-2xl font-bold text-accent">Flow</span>
-          <ArrowRight className="h-5 w-5 text-accent -ml-1 transition-transform group-hover:translate-x-1" />
+        <div className="flex items-center justify-center mb-8">
+          <img 
+            src="/logo/auditflow-logo.png" 
+            alt="AuditFlow" 
+            className="h-10 w-auto"
+          />
         </div>
 
         <div className="space-y-4">
