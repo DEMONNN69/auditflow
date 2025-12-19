@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import PrivateRoute from "@/routes/PrivateRoute";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Transfer from "@/pages/Transfer";
 import History from "@/pages/History";
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             
             {/* Protected Routes */}
             <Route

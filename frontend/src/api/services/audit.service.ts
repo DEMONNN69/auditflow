@@ -1,13 +1,17 @@
 import apiClient from '../client';
 
 export interface AuditEntry {
-  id: string;
-  type: 'sent' | 'received';
-  amount: number;
-  counterparty: string;
-  timestamp: string;
-  status: 'completed' | 'pending' | 'failed';
-  reference: string;
+  id: number;
+  event_type: 'transaction_created' | 'transaction_completed' | 'transaction_failed' | 'balance_updated' | 'user_login' | 'user_logout' | 'account_created';
+  user: number | null;
+  user_email: string | null;
+  transaction: number | null;
+  transaction_reference: string | null;
+  description: string;
+  data: Record<string, any>;
+  ip_address: string | null;
+  created_at: string;
+  is_immutable: boolean;
 }
 
 export interface AuditHistoryResponse {
@@ -18,44 +22,39 @@ export interface AuditHistoryResponse {
 }
 
 export interface AuditFilters {
-  type?: 'sent' | 'received';
-  start_date?: string;
-  end_date?: string;
+  event_type?: string;
+  user_id?: number;
   page?: number;
   page_size?: number;
-  ordering?: string;
 }
 
 export const auditService = {
   /**
-   * Get audit history with optional filters
-   * GET /api/audit/history/
+   * Get audit history with optional filters (Admin only)
+   * GET /api/audit/logs/
    */
   getHistory: async (filters?: AuditFilters): Promise<AuditHistoryResponse> => {
-    const response = await apiClient.get<AuditHistoryResponse>('/api/audit/history/', {
+    const response = await apiClient.get<AuditHistoryResponse>('/api/audit/logs/', {
       params: filters,
     });
     return response.data;
   },
 
   /**
-   * Get single audit entry details
-   * GET /api/audit/history/:id/
+   * Get current user's audit logs
+   * GET /api/audit/logs/my_logs/
    */
-  getEntry: async (id: string): Promise<AuditEntry> => {
-    const response = await apiClient.get<AuditEntry>(`/api/audit/history/${id}/`);
+  getMyLogs: async (): Promise<AuditEntry[]> => {
+    const response = await apiClient.get<AuditEntry[]>('/api/audit/logs/my_logs/');
     return response.data;
   },
 
   /**
-   * Export audit history as CSV/PDF
-   * GET /api/audit/export/
+   * Get single audit entry details
+   * GET /api/audit/logs/:id/
    */
-  exportHistory: async (format: 'csv' | 'pdf', filters?: AuditFilters): Promise<Blob> => {
-    const response = await apiClient.get('/api/audit/export/', {
-      params: { format, ...filters },
-      responseType: 'blob',
-    });
+  getEntry: async (id: number): Promise<AuditEntry> => {
+    const response = await apiClient.get<AuditEntry>(`/api/audit/logs/${id}/`);
     return response.data;
   },
 };

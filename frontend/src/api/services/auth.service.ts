@@ -13,28 +13,29 @@ export interface AuthResponse {
 export const authService = {
   /**
    * Authenticate user and obtain JWT tokens
-   * POST /api/token/
+   * POST /api/users/token/
    */
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/api/token/', credentials);
+    const response = await apiClient.post<AuthResponse>('/api/users/token/', credentials);
     return response.data;
   },
 
   /**
    * Refresh JWT token
-   * POST /api/token/refresh/
+   * POST /api/users/token/refresh/
    */
   refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
-    const response = await apiClient.post('/api/token/refresh/', { refresh: refreshToken });
+    const response = await apiClient.post('/api/users/token/refresh/', { refresh: refreshToken });
     return response.data;
   },
 
   /**
-   * Logout user (if backend supports token blacklisting)
-   * POST /api/token/blacklist/
+   * Logout user (clears local storage)
    */
-  logout: async (refreshToken: string): Promise<void> => {
-    await apiClient.post('/api/token/blacklist/', { refresh: refreshToken });
+  logout: async (): Promise<void> => {
+    // Backend doesn't have token blacklisting, just clear local storage
+    localStorage.removeItem('auditflow_token');
+    localStorage.removeItem('auditflow_refresh_token');
   },
 };
 

@@ -165,13 +165,25 @@ const Login: React.FC = () => {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-4">
               <a
                 href="#"
                 className="text-sm text-muted-foreground hover:text-accent transition-colors"
               >
                 Forgot your password?
               </a>
+              
+              <div className="border-t border-border/50 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="text-accent hover:text-accent/90 font-medium transition-colors"
+                  >
+                    Create one now
+                  </button>
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
