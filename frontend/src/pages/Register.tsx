@@ -4,32 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2, AlertCircle, Lock, Mail, User, Phone } from 'lucide-react';
-import { z } from 'zod';
-import apiClient from '@/api/client';
-
-const registerSchema = z.object({
-  email: z.string().trim().email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string(),
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-  phone: z.string().min(10, 'Please enter a valid phone number'),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+import { ArrowRight, Loader2, AlertCircle, Lock, Mail, User } from 'lucide-react';
+import { registerSchema, type RegisterFormData } from '@/schemas/auth.schema';
+import { authService } from '@/api/services/auth.service';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
     password: '',
-    confirmPassword: '',
+    password_confirm: '',
     first_name: '',
     last_name: '',
-    phone: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,9 +41,7 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { confirmPassword, ...registerData } = formData;
-      await apiClient.post('/api/users/users/', registerData);
+      await authService.register(formData);
       
       // Show success message and redirect to login
       navigate('/login', { 
@@ -68,8 +53,13 @@ const Register: React.FC = () => {
         if (axiosError.response?.data) {
           const data = axiosError.response.data;
           if (typeof data === 'object') {
-            const firstError = Object.values(data)[0];
-            setError(Array.isArray(firstError) ? firstError[0] : String(firstError));
+            // Handle field-specific errors from backend
+            const backendErrors: Record<string, string> = {};
+            Object.entries(data).forEach(([key, value]) => {
+              backendErrors[key] = Array.isArray(value) ? value[0] : String(value);
+            });
+            setValidationErrors(backendErrors);
+            setError('Please fix the errors below.');
           } else {
             setError('Registration failed. Please try again.');
           }
@@ -84,7 +74,7 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: keyof RegisterFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear validation error for this field
     if (validationErrors[field]) {
@@ -191,25 +181,6 @@ const Register: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1234567890"
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                    className={`pl-10 ${validationErrors.phone ? 'border-destructive' : ''}`}
-                    disabled={isLoading}
-                  />
-                </div>
-                {validationErrors.phone && (
-                  <p className="text-xs text-destructive">{validationErrors.phone}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -237,15 +208,15 @@ const Register: React.FC = () => {
                     id="confirmPassword"
                     type="password"
                     placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                    className={`pl-10 ${validationErrors.confirmPassword ? 'border-destructive' : ''}`}
+                    value={formData.password_confirm}
+                    onChange={(e) => handleChange('password_confirm', e.target.value)}
+                    className={`pl-10 ${validationErrors.password_confirm ? 'border-destructive' : ''}`}
                     disabled={isLoading}
                     autoComplete="new-password"
                   />
                 </div>
-                {validationErrors.confirmPassword && (
-                  <p className="text-xs text-destructive">{validationErrors.confirmPassword}</p>
+                {validationErrors.password_confirm && (
+                  <p className="text-xs text-destructive">{validationErrors.password_confirm}</p>
                 )}
               </div>
 

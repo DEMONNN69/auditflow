@@ -6,20 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Loader2, AlertCircle, Lock, Mail } from 'lucide-react';
-import { z } from 'zod';
-
-const loginSchema = z.object({
-  email: z.string().trim().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
+import { loginSchema, type LoginFormData } from '@/schemas/auth.schema';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated } = useAuth();
   
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<LoginFormData>({
+    email: '',
+    password: '',
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
@@ -38,7 +35,7 @@ const Login: React.FC = () => {
     setValidationErrors({});
 
     // Validate inputs
-    const result = loginSchema.safeParse({ email, password });
+    const result = loginSchema.safeParse(formData);
     if (!result.success) {
       const errors: { email?: string; password?: string } = {};
       result.error.errors.forEach((err) => {
@@ -52,7 +49,7 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login({ email, password });
+      await login(formData);
       navigate(from, { replace: true });
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -114,8 +111,8 @@ const Login: React.FC = () => {
                     id="email"
                     type="email"
                     placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                     className={`pl-10 ${validationErrors.email ? 'border-destructive' : ''}`}
                     disabled={isLoading}
                     autoComplete="email"
@@ -134,8 +131,8 @@ const Login: React.FC = () => {
                     id="password"
                     type="password"
                     placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                     className={`pl-10 ${validationErrors.password ? 'border-destructive' : ''}`}
                     disabled={isLoading}
                     autoComplete="current-password"

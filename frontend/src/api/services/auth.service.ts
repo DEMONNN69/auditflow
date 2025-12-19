@@ -30,6 +30,21 @@ export const authService = {
   },
 
   /**
+   * Register new user
+   * POST /api/users/users/
+   */
+  register: async (data: {
+    email: string;
+    password: string;
+    password_confirm: string;
+    first_name: string;
+    last_name: string;
+  }): Promise<{ id: number; email: string }> => {
+    const response = await apiClient.post('/api/users/users/', data);
+    return response.data;
+  },
+
+  /**
    * Logout user (clears local storage)
    */
   logout: async (): Promise<void> => {
