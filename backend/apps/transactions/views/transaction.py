@@ -1,63 +1,93 @@
+import logging
+from decimal import Decimal, InvalidOperation
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from apps.transactions.models.transaction import Account, Transaction, Balance
-from apps.transactions.serializers.transaction import AccountSerializer, TransactionSerializer, BalanceSerializer
+from django.db import models
+from apps.transactions.models.transaction import Transaction
+from apps.transactions.serializers.transaction import TransactionSerializer
 from apps.transactions.services.transaction_service import TransactionService
+from apps.users.models.user import CustomUser
 from apps.core.exceptions.base import InsufficientBalanceException, InvalidTransactionException
 
-class AccountViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = AccountSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return Account.objects.filter(user=self.request.user)
+logger = logging.getLogger(__name__)
 
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        account = Account.objects.filter(user=self.request.user).first()
-        if not account:
-            return Transaction.objects.none()
+        user = self.request.user
         return Transaction.objects.filter(
-            models.Q(from_account=account) | models.Q(to_account=account)
+            models.Q(from_user=user) | models.Q(to_user=user)
         )
 
     def create(self, request, *args, **kwargs):
         try:
-            from_account = Account.objects.get(user=request.user)
-            to_account_id = request.data.get('to_account')
-            amount = request.data.get('amount')
+            from_user = request.user
+            to_recipient_id = request.data.get('to_recipient_id')
+            raw_amount = request.data.get('amount')
             description = request.data.get('description', '')
 
-            to_account = Account.objects.get(id=to_account_id)
+            if not to_recipient_id:
+                return Response(
+                    {'error': 'Recipient ID is required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if raw_amount in (None, ''):
+                return Response(
+                    {'error': 'Amount is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                amount = Decimal(str(raw_amount))
+            except (InvalidOperation, TypeError):
+                return Response(
+                    {'error': 'Invalid amount'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if amount <= 0:
+                return Response(
+                    {'error': 'Amount must be greater than zero'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                to_user = CustomUser.objects.get(recipient_id=to_recipient_id)
+            except CustomUser.DoesNotExist:
+                return Response(
+                    {'error': 'Recipient not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            if to_user == from_user:
+                return Response(
+                    {'error': 'Cannot transfer to yourself'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             txn = TransactionService.create_transaction(
-                from_account=from_account,
-                to_account=to_account,
-                amount=float(amount),
+                from_user=from_user,
+                to_user=to_user,
+                amount=amount,
                 transaction_type='transfer',
                 description=description
             )
 
             serializer = self.get_serializer(txn)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Account.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=status.HTTP_404_NOT_FOUND)
         except InsufficientBalanceException as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except InvalidTransactionException as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-class BalanceViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = BalanceSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        account = Account.objects.filter(user=self.request.user).first()
-        if not account:
-            return Balance.objects.none()
-        return Balance.objects.filter(account=account)
+        except Exception as e:
+            logger.exception(
+                "Transaction creation failed for from_user=%s to_recipient_id=%s",
+                getattr(request.user, 'id', None),
+                to_recipient_id,
+            )
+            return Response({'error': 'Transaction failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

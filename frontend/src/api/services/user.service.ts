@@ -3,20 +3,22 @@ import apiClient from '../client';
 export interface User {
   id: number;
   email: string;
+  recipient_id: string;
   first_name: string;
   last_name: string;
+  full_name: string;
   phone: string;
+  balance: number;
   is_verified: boolean;
   created_at: string;
 }
 
-export interface Account {
-  id: number;
-  account_number: string;
-  account_type: 'checking' | 'savings';
-  balance: string;
-  is_active: boolean;
-  created_at: string;
+export interface RecipientInfo {
+  recipient_id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
 }
 
 export const userService = {
@@ -39,12 +41,12 @@ export const userService = {
   },
 
   /**
-   * Get user's account information
-   * GET /api/transactions/accounts/
+   * Get recipient info by recipient_id
+   * GET /api/users/users/recipient/:recipient_id/
    */
-  getAccount: async (): Promise<Account> => {
-    const response = await apiClient.get<{ results: Account[] }>('/api/transactions/accounts/');
-    return response.data.results[0];
+  getRecipientInfo: async (recipientId: string): Promise<RecipientInfo> => {
+    const response = await apiClient.get<RecipientInfo>(`/api/users/users/recipient/${recipientId}/`);
+    return response.data;
   },
 };
 

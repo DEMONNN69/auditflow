@@ -1,17 +1,19 @@
 import apiClient from '../client';
 
 export interface TransferData {
-  to_account: number;
+  to_recipient_id: string;
   amount: number;
   description?: string;
 }
 
 export interface Transaction {
   id: number;
-  from_account: number | null;
-  from_account_number: string | null;
-  to_account: number;
-  to_account_number: string;
+  from_user: number | null;
+  from_recipient_id: string;
+  from_user_name: string | null;
+  to_user: number;
+  to_recipient_id: string;
+  to_user_name: string;
   amount: string;
   transaction_type: 'transfer' | 'deposit' | 'withdrawal';
   status: 'pending' | 'completed' | 'failed';

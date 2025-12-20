@@ -1,13 +1,32 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.core.validators import MinValueValidator
+from decimal import Decimal
+import random
 from apps.core.models.base import TimeStampedModel
 
 class CustomUserManager(BaseUserManager):
+    def _generate_recipient_id(self):
+        """Generate a unique 10-digit recipient ID"""
+        while True:
+            # Generate 10-digit number (1000000000 to 9999999999)
+            recipient_id = str(random.randint(1000000000, 9999999999))
+            if not CustomUser.objects.filter(recipient_id=recipient_id).exists():
+                return recipient_id
+    
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError('The Email field must be set')
         email = self.normalize_email(email)
         extra_fields.setdefault('username', email)
+        
+        # Auto-generate recipient_id if not provided
+        if 'recipient_id' not in extra_fields:
+            extra_fields['recipient_id'] = self._generate_recipient_id()
+        
+        # Set default balance to 500.00
+        extra_fields.setdefault('balance', Decimal('500.00'))
+        
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -29,6 +48,13 @@ class CustomUser(AbstractUser, TimeStampedModel):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, blank=True)
     is_verified = models.BooleanField(default=False)
+    recipient_id = models.CharField(max_length=10, unique=True, editable=False, db_index=True)
+    balance = models.DecimalField(
+        max_digits=15, 
+        decimal_places=2, 
+        default=Decimal('500.00'),
+        validators=[MinValueValidator(Decimal('0.00'))]
+    )
     
     objects = CustomUserManager()
     

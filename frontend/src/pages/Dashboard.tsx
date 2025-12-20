@@ -29,12 +29,16 @@ import { cn } from '@/lib/utils';
 import { z } from 'zod';
 
 const transferSchema = z.object({
-  recipient_account: z.string().trim().min(1, 'Recipient account is required'),
+  to_recipient_id: z
+    .string()
+    .trim()
+    .length(10, 'Recipient ID must be 10 digits')
+    .regex(/^\d+$/, 'Recipient ID must be numeric'),
   amount: z.number().positive('Amount must be greater than 0'),
   description: z.string().optional(),
 });
 
-type SortField = 'id' | 'type' | 'amount' | 'counterparty' | 'timestamp';
+type SortField = 'created_at' | 'event_type';
 type SortOrder = 'asc' | 'desc';
 
 const Dashboard: React.FC = () => {
@@ -49,12 +53,12 @@ const Dashboard: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [transferLoading, setTransferLoading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{ recipient_account?: string; amount?: string }>({});
+  const [validationErrors, setValidationErrors] = useState<{ to_recipient_id?: string; amount?: string }>({});
   
   // Audit history state
   const [auditHistory, setAuditHistory] = useState<AuditEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('timestamp');
+  const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Fetch user balance
@@ -79,10 +83,17 @@ const Dashboard: React.FC = () => {
   const fetchAuditHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await auditService.getHistory({
-        ordering: `${sortOrder === 'desc' ? '-' : ''}${sortField}`,
+      const response = await auditService.getMyLogs();
+      // Client-side sort since my_logs returns flat array
+      const sorted = [...response].sort((a, b) => {
+        const dir = sortOrder === 'desc' ? -1 : 1;
+        if (sortField === 'created_at') {
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+        }
+        // event_type fallback
+        return a.event_type.localeCompare(b.event_type) * dir;
       });
-      setAuditHistory(response.results);
+      setAuditHistory(sorted);
     } catch (error) {
       console.error('Failed to fetch audit history:', error);
       toast({
@@ -110,7 +121,7 @@ const Dashboard: React.FC = () => {
     setValidationErrors({});
 
     const transferData: TransferData = {
-      recipient_account: recipientAccount,
+      to_recipient_id: recipientAccount,
       amount: parseFloat(amount),
       description: description || undefined,
     };
@@ -120,10 +131,10 @@ const Dashboard: React.FC = () => {
     if (!result.success) {
       const errors: { recipient_account?: string; amount?: string } = {};
       result.error.errors.forEach((err) => {
-        if (err.path[0] === 'recipient_account') errors.recipient_account = err.message;
-        if (err.path[0] === 'amount') errors.amount = err.message;
+        if (err.path[0] === 'to_recipient_id') (errors as any).to_recipient_id = err.message;
+        if (err.path[0] === 'amount') (errors as any).amount = err.message;
       });
-      setValidationErrors(errors);
+      setValidationErrors(errors as { to_recipient_id?: string; amount?: string });
       return;
     }
 
@@ -132,7 +143,7 @@ const Dashboard: React.FC = () => {
       await transactionService.initiateTransfer(transferData);
       toast({
         title: 'Transfer Successful',
-        description: `$${transferData.amount.toFixed(2)} sent successfully`,
+        description: `₹${transferData.amount.toFixed(2)} sent successfully`,
         className: 'bg-success text-success-foreground',
       });
       
@@ -175,9 +186,10 @@ const Dashboard: React.FC = () => {
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -210,7 +222,6 @@ const Dashboard: React.FC = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Current Balance
             </CardTitle>
-            <Wallet className="h-5 w-5 text-accent" />
           </CardHeader>
           <CardContent>
             {balanceLoading ? (
@@ -221,7 +232,7 @@ const Dashboard: React.FC = () => {
             ) : (
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold text-foreground">
-                  {balance !== null ? formatCurrency(balance) : '$—'}
+                  {balance !== null ? formatCurrency(balance) : '₹—'}
                 </span>
                 <span className="text-sm text-success flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
@@ -229,9 +240,21 @@ const Dashboard: React.FC = () => {
                 </span>
               </div>
             )}
-            <p className="text-xs text-muted-foreground mt-2">
-              Account: {user?.account_number || '—'}
-            </p>
+            <button
+              onClick={() => {
+                if (user?.recipient_id) {
+                  navigator.clipboard.writeText(user.recipient_id);
+                  toast({
+                    title: 'Copied',
+                    description: 'Recipient ID copied to clipboard',
+                  });
+                }
+              }}
+              className="text-xs text-muted-foreground mt-2 hover:text-accent transition-colors cursor-pointer"
+              title="Click to copy"
+            >
+              Recipient ID: <span className="font-mono font-semibold">{user?.recipient_id || '—'}</span>
+            </button>
           </CardContent>
         </Card>
 
@@ -249,21 +272,21 @@ const Dashboard: React.FC = () => {
           <CardContent>
             <form onSubmit={handleTransfer} className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
-                <Label htmlFor="recipient">Recipient Account</Label>
+                <Label htmlFor="recipient">Recipient ID</Label>
                 <Input
                   id="recipient"
-                  placeholder="Account number"
+                  placeholder="Enter 10-digit Recipient ID"
                   value={recipientAccount}
                   onChange={(e) => setRecipientAccount(e.target.value)}
                   disabled={transferLoading}
-                  className={validationErrors.recipient_account ? 'border-destructive' : ''}
+                  className={validationErrors.to_recipient_id ? 'border-destructive' : ''}
                 />
-                {validationErrors.recipient_account && (
-                  <p className="text-xs text-destructive">{validationErrors.recipient_account}</p>
+                {validationErrors.to_recipient_id && (
+                  <p className="text-xs text-destructive">{validationErrors.to_recipient_id}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount ($)</Label>
+                <Label htmlFor="amount">Amount (INR)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -337,49 +360,28 @@ const Dashboard: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('id')}
-                  >
+                  <TableHead>
                     <div className="flex items-center gap-1">
-                      ID
-                      <SortIcon field="id" />
+                      Event Type
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      Description
                     </div>
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('type')}
+                    onClick={() => handleSort('created_at')}
                   >
                     <div className="flex items-center gap-1">
-                      Type
-                      <SortIcon field="type" />
+                      Date
+                      <SortIcon field="created_at" />
                     </div>
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('amount')}
-                  >
+                  <TableHead>
                     <div className="flex items-center gap-1">
-                      Amount
-                      <SortIcon field="amount" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('counterparty')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Counterparty
-                      <SortIcon field="counterparty" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('timestamp')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Timestamp
-                      <SortIcon field="timestamp" />
+                      IP Address
                     </div>
                   </TableHead>
                 </TableRow>
@@ -387,54 +389,43 @@ const Dashboard: React.FC = () => {
               <TableBody>
                 {historyLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={4} className="h-32 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin text-accent" />
-                        <span className="text-muted-foreground">Loading transactions...</span>
+                        <span className="text-muted-foreground">Loading audit history...</span>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : auditHistory.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={4} className="h-32 text-center">
                       <div className="text-muted-foreground">
-                        <p>No transactions found</p>
-                        <p className="text-sm">Your transaction history will appear here</p>
+                        <p>No audit events found</p>
+                        <p className="text-sm">Your activity history will appear here</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   auditHistory.map((entry) => (
                     <TableRow key={entry.id} className="hover:bg-secondary/30 transition-colors">
-                      <TableCell className="font-mono text-sm">
-                        #{entry.id.slice(0, 8)}
-                      </TableCell>
                       <TableCell>
                         <div className={cn(
                           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                          entry.type === 'sent' 
-                            ? "bg-destructive/10 text-destructive" 
-                            : "bg-success/10 text-success"
+                          entry.event_type.includes('transaction') 
+                            ? "bg-blue-500/10 text-blue-600" 
+                            : "bg-purple-500/10 text-purple-600"
                         )}>
-                          {entry.type === 'sent' ? (
-                            <ArrowUpRight className="h-3 w-3" />
-                          ) : (
-                            <ArrowDownLeft className="h-3 w-3" />
-                          )}
-                          {entry.type === 'sent' ? 'Sent' : 'Received'}
+                          {entry.event_type.replace(/_/g, ' ')}
                         </div>
                       </TableCell>
-                      <TableCell className={cn(
-                        "font-semibold",
-                        entry.type === 'sent' ? "text-destructive" : "text-success"
-                      )}>
-                        {entry.type === 'sent' ? '-' : '+'}{formatCurrency(entry.amount)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {entry.counterparty}
+                      <TableCell className="text-muted-foreground text-sm max-w-xs truncate">
+                        {entry.description}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(entry.timestamp)}
+                        {formatDate(entry.created_at)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm font-mono">
+                        {entry.ip_address || '—'}
                       </TableCell>
                     </TableRow>
                   ))

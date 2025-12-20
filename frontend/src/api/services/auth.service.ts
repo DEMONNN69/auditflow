@@ -47,7 +47,7 @@ export const authService = {
   /**
    * Logout user (clears local storage)
    */
-  logout: async (): Promise<void> => {
+  logout: async (refreshToken): Promise<void> => {
     // Backend doesn't have token blacklisting, just clear local storage
     localStorage.removeItem('auditflow_token');
     localStorage.removeItem('auditflow_refresh_token');

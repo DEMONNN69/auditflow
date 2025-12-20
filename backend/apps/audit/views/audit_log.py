@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.audit.models.audit_log import AuditLog
@@ -7,17 +7,22 @@ from apps.audit.serializers.audit_log import AuditLogSerializer
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AuditLogSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = AuditLog.objects.all()
         event_type = self.request.query_params.get('event_type')
         user_id = self.request.query_params.get('user_id')
-        
+
+        # Non-staff users only see their own logs
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(user=self.request.user)
+        else:
+            if user_id:
+                queryset = queryset.filter(user_id=user_id)
+
         if event_type:
             queryset = queryset.filter(event_type=event_type)
-        if user_id:
-            queryset = queryset.filter(user_id=user_id)
         
         return queryset
 

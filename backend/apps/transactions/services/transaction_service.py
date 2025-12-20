@@ -1,17 +1,22 @@
 import hashlib
 import uuid
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.db import transaction as db_transaction
-from apps.transactions.models.transaction import Account, Transaction, Balance
+from apps.transactions.models.transaction import Transaction
 from apps.core.exceptions.base import InsufficientBalanceException, InvalidTransactionException
 
 class TransactionService:
     @staticmethod
-    def create_transaction(from_account, to_account, amount, transaction_type, description=""):
+    def create_transaction(from_user, to_user, amount, transaction_type, description=""):
+        try:
+            amount = Decimal(str(amount))
+        except (InvalidOperation, TypeError):
+            raise InvalidTransactionException("Invalid amount")
+
         if amount <= 0:
             raise InvalidTransactionException("Amount must be greater than zero")
         
-        if transaction_type == 'transfer' and from_account.balance < amount:
+        if transaction_type == 'transfer' and from_user.balance < amount:
             raise InsufficientBalanceException("Insufficient balance")
 
         with db_transaction.atomic():
@@ -19,8 +24,10 @@ class TransactionService:
             
             # Create transaction
             txn = Transaction.objects.create(
-                from_account=from_account if transaction_type == 'transfer' else None,
-                to_account=to_account,
+                from_user=from_user if transaction_type == 'transfer' else None,
+                from_recipient_id=from_user.recipient_id if transaction_type == 'transfer' else '',
+                to_user=to_user,
+                to_recipient_id=to_user.recipient_id,
                 amount=amount,
                 transaction_type=transaction_type,
                 status='pending',
@@ -31,23 +38,11 @@ class TransactionService:
 
             # Update balances
             if transaction_type == 'transfer':
-                from_account.balance -= amount
-                from_account.save()
-                Balance.objects.create(
-                    account=from_account,
-                    current_balance=from_account.balance,
-                    previous_balance=from_account.balance + amount,
-                    transaction=txn
-                )
+                from_user.balance -= amount
+                from_user.save()
 
-            to_account.balance += amount
-            to_account.save()
-            Balance.objects.create(
-                account=to_account,
-                current_balance=to_account.balance,
-                previous_balance=to_account.balance - amount,
-                transaction=txn
-            )
+            to_user.balance += amount
+            to_user.save()
 
             # Mark transaction as completed
             txn.status = 'completed'
