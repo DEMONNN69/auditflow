@@ -17,7 +17,6 @@ AuditFlow is a mission-critical peer-to-peer transaction system built with Djang
 - Django + Django REST Framework
 - SQLite (db.sqlite3) for local development
 - SimpleJWT for authentication
-- Celery for async tasks
 - Docker containerization
 
 ### Frontend
@@ -66,8 +65,7 @@ auditflow/
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL 14+
-- Docker & Docker Compose
+- Docker & Docker Compose (optional)
 
 ### Backend Setup
 
@@ -91,15 +89,10 @@ SECRET_KEY=change-me
 DEBUG=true
 ALLOWED_HOSTS=*
 
-# Database
-DB_NAME=auditflow
-DB_USER=postgres
-DB_PASSWORD=password
-DB_HOST=localhost
-DB_PORT=5432
+
 
 # CORS (frontend origin)
-CORS_ALLOWED_ORIGINS=http://localhost:5173
+CORS_ALLOWED_ORIGINS=http://localhost:8080
 ```
 
 Optional but recommended:
@@ -117,7 +110,7 @@ Notes:
 
 ```bash
 cd frontend
-npm install
+npm install or pnpm install
 npm run dev
 ```
 
@@ -158,10 +151,11 @@ Base URL: `http://localhost:8000`
 - POST `/api/users/users/change_password/` — change password (`old_password`, `new_password`)
 
 ### Transactions
-- GET `/api/transactions/transactions/` — list your transactions (sent and received)
-- POST `/api/transactions/transactions/` — create transfer
+- GET `/api/transactions/` — list your transactions (sent and received)
+- POST `/api/transactions/` — create transfer
 	- Body: `{ "to_recipient_id": "1234567890", "amount": "100.00", "description": "optional" }`
 	- Notes: amount must be greater than zero; cannot transfer to self; 400 on insufficient balance.
+- GET `/api/transactions/:id/` — get transaction by ID
 
 ### Audit Logs
 - GET `/api/audit/logs/` — list audit logs
@@ -173,9 +167,10 @@ Base URL: `http://localhost:8000`
 
 ```bash
 # Backend tests
-pytest backend/
+#Navigate to the backend folder
 
-# Frontend tests
-npm test
+pytest tests/ -v
+
+
 ```
 
