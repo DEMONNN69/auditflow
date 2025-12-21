@@ -99,13 +99,22 @@ const Transfer: React.FC = () => {
       return;
     }
 
+    // Show confirmation dialog instead of directly submitting
+    setPendingTransferData(transferData);
+    setShowConfirmDialog(true);
+  };
+
+  const confirmTransfer = async () => {
+    if (!pendingTransferData) return;
+
     setIsLoading(true);
+    setShowConfirmDialog(false);
     try {
-      await transactionService.initiateTransfer(transferData);
+      await transactionService.initiateTransfer(pendingTransferData);
       setSuccess(true);
       toast({
         title: 'Transfer Successful',
-          description: `₹${transferData.amount.toFixed(2)} sent to ${recipientInfo.full_name}`,
+        description: `₹${pendingTransferData.amount.toFixed(2)} sent to ${recipientInfo?.full_name}`,
         className: 'bg-success text-success-foreground',
       });
       
@@ -114,6 +123,7 @@ const Transfer: React.FC = () => {
       setRecipientInfo(null);
       setAmount('');
       setDescription('');
+      setPendingTransferData(null);
       await refreshUser();
     } catch (error: any) {
       console.error('Transfer failed:', error);
@@ -268,6 +278,53 @@ const Transfer: React.FC = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Transfer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to send <span className="font-bold text-foreground">₹{pendingTransferData?.amount.toFixed(2)}</span> to <span className="font-bold text-foreground">{recipientInfo?.full_name}</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-4 border-y border-border">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Recipient ID:</span>
+              <span className="font-mono font-semibold">{pendingTransferData?.to_recipient_id}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Amount:</span>
+              <span className="font-semibold">₹{pendingTransferData?.amount.toFixed(2)}</span>
+            </div>
+            {pendingTransferData?.description && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Note:</span>
+                <span className="text-right">{pendingTransferData.description}</span>
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmTransfer}
+              disabled={isLoading}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Yes, Send Money'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
