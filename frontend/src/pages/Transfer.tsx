@@ -206,11 +206,20 @@ const Transfer: React.FC = () => {
                 </p>
               )}
               {recipientInfo && !validationErrors.to_recipient_id && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/10 text-accent animate-fade-in">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <div>
-                    <p className="font-medium">{recipientInfo.full_name}</p>
-                    <p className="text-xs opacity-80">{recipientInfo.email}</p>
+                <div className="mt-4 p-4 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/10 via-background to-accent/5 shadow-sm animate-fade-in">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/20">
+                      <CheckCircle2 className="h-6 w-6 text-accent" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-semibold text-muted-foreground">Recipient Details</p>
+                      <p className="text-lg font-bold text-foreground">{recipientInfo.full_name}</p>
+                      <p className="text-sm text-muted-foreground">{recipientInfo.email}</p>
+                      <div className="mt-3 flex items-center gap-2 rounded-lg bg-background/60 px-3 py-2">
+                        <span className="text-xs font-medium text-muted-foreground">ID:</span>
+                        <span className="font-mono text-sm font-semibold text-accent">{recipientId}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

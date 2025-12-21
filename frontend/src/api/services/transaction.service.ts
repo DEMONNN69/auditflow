@@ -34,28 +34,28 @@ export interface TransactionListResponse {
 export const transactionService = {
   /**
    * Initiate a money transfer
-   * POST /api/transactions/transactions/
+   * POST /api/transactions/
    */
   initiateTransfer: async (data: TransferData): Promise<TransferResponse> => {
-    const response = await apiClient.post<TransferResponse>('/api/transactions/transactions/', data);
+    const response = await apiClient.post<TransferResponse>('/api/transactions/', data);
     return response.data;
   },
 
   /**
    * Get transaction by ID
-   * GET /api/transactions/transactions/:id/
+   * GET /api/transactions/:id/
    */
   getTransaction: async (id: number): Promise<Transaction> => {
-    const response = await apiClient.get<Transaction>(`/api/transactions/transactions/${id}/`);
+    const response = await apiClient.get<Transaction>(`/api/transactions/${id}/`);
     return response.data;
   },
 
   /**
    * Get all transactions for current user with pagination
-   * GET /api/transactions/transactions/
+   * GET /api/transactions/
    */
   getTransactions: async (params?: { page?: number; page_size?: number }): Promise<TransactionListResponse> => {
-    const response = await apiClient.get<TransactionListResponse>('/api/transactions/transactions/', { params });
+    const response = await apiClient.get<TransactionListResponse>('/api/transactions/', { params });
     return response.data;
   },
 };

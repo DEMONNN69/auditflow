@@ -72,3 +72,25 @@ This document tracks all AI-assisted code generation, architectural decisions, a
 - DDD principles ensure maintainability and scalability
 - Docker-ready configuration for containerized deployment
 - Comprehensive test structure with pytest fixtures
+
+---
+
+## AI-Assisted Tasks (Detailed)
+
+Date: December 21, 2025
+
+- Backend: Fixed transaction amount handling by converting to Decimal in `TransactionService` and validating in `TransactionViewSet` to prevent float/Decimal mismatches and 500s.
+- Backend: Added comprehensive audit logging for both success and failure paths, including `sender_id`, `receiver_id`, `amount`, `status`, `reference_id`, and `direction` for dual logging (sender + receiver).
+- Backend: Made `AuditLogAdmin` strictly read-only (no add/change/delete) to enforce immutability in the admin UI.
+- Frontend: Implemented JWT auto-refresh in axios interceptor to reduce unexpected logout on 401 and seamlessly retry original requests.
+- Frontend: Corrected Dashboard audit loading to use `getMyLogs()` and enriched table with sender/receiver/amount/status and timestamp.
+- Frontend: Refactored History page to align with audit API response, removed unused export/sorting code, and fixed type mismatches.
+- Frontend: Added a confirmation dialog (AlertDialog) before sending transfers, showing amount, recipient, ID, and note for user verification.
+- Frontend: Improved recipient detail card in Transfer page with better hierarchy, visual styling, and ID badge.
+- Frontend: Standardized INR currency formatting and labels across Dashboard, Transfer, and History pages.
+
+## Effectiveness Score
+
+Score: 4 (out of 5)
+
+Justification: AI assistance significantly accelerated implementation—saving time on boilerplate, cross-layer wiring, and consistent UI patterns. Manual refinement was required to fix edge cases (Decimal normalization, accurate audit serialization, client-side sorting, and immutable admin behavior) and to align the UI/UX with project standards. Overall, the productivity gain was substantial while ensuring production-grade correctness.
