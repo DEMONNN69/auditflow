@@ -10,7 +10,6 @@ import {
   Mail, 
   Shield, 
   Bell,
-  CreditCard,
   LogOut
 } from 'lucide-react';
 
@@ -67,18 +66,6 @@ const Settings: React.FC = () => {
                 value={user?.email || ''}
                 disabled
                 className="pl-10 bg-secondary/50"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="accountNumber">Account Number</Label>
-            <div className="relative">
-              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="accountNumber"
-                value={user?.account_number || ''}
-                disabled
-                className="pl-10 bg-secondary/50 font-mono"
               />
             </div>
           </div>

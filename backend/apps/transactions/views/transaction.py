@@ -10,6 +10,7 @@ from apps.transactions.serializers.transaction import TransactionSerializer
 from apps.transactions.services.transaction_service import TransactionService
 from apps.users.models.user import CustomUser
 from apps.core.exceptions.base import InsufficientBalanceException, InvalidTransactionException
+from apps.audit.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -90,4 +91,22 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 getattr(request.user, 'id', None),
                 to_recipient_id,
             )
+            try:
+                AuditService.log_event(
+                    event_type='transaction_failed',
+                    user=request.user,
+                    description=f"Transaction of ₹{raw_amount} failed: {str(e)}",
+                    data={
+                        'to_recipient_id': to_recipient_id,
+                        'amount': str(raw_amount),
+                        'from_user_id': request.user.id,
+                        'from_recipient_id': request.user.recipient_id,
+                        'from_user_name': f"{request.user.first_name} {request.user.last_name}".strip(),
+                        'error': str(e),
+                        'status': 'failed',
+                    },
+                    request=request,
+                )
+            except Exception:
+                logger.exception("Audit logging for failed transaction also failed")
             return Response({'error': 'Transaction failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

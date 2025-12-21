@@ -356,32 +356,22 @@ const Dashboard: React.FC = () => {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="rounded-lg border border-border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      Event Type
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      Description
-                    </div>
-                  </TableHead>
+                  <TableHead className="min-w-[120px]">From (ID)</TableHead>
+                  <TableHead className="min-w-[120px]">To (ID)</TableHead>
+                  <TableHead className="min-w-[100px]">Amount</TableHead>
+                  <TableHead className="min-w-[90px]">Type</TableHead>
+                  <TableHead className="min-w-[80px]">Status</TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
+                    className="cursor-pointer hover:bg-secondary transition-colors min-w-[160px]"
                     onClick={() => handleSort('created_at')}
                   >
                     <div className="flex items-center gap-1">
-                      Date
+                      Date/Time
                       <SortIcon field="created_at" />
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      IP Address
                     </div>
                   </TableHead>
                 </TableRow>
@@ -389,7 +379,7 @@ const Dashboard: React.FC = () => {
               <TableBody>
                 {historyLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-32 text-center">
+                    <TableCell colSpan={6} className="h-32 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin text-accent" />
                         <span className="text-muted-foreground">Loading audit history...</span>
@@ -398,37 +388,66 @@ const Dashboard: React.FC = () => {
                   </TableRow>
                 ) : auditHistory.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-32 text-center">
+                    <TableCell colSpan={6} className="h-32 text-center">
                       <div className="text-muted-foreground">
-                        <p>No audit events found</p>
-                        <p className="text-sm">Your activity history will appear here</p>
+                        <p>No transactions found</p>
+                        <p className="text-sm">Your transaction history will appear here</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  auditHistory.map((entry) => (
-                    <TableRow key={entry.id} className="hover:bg-secondary/30 transition-colors">
-                      <TableCell>
-                        <div className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                          entry.event_type.includes('transaction') 
-                            ? "bg-blue-500/10 text-blue-600" 
-                            : "bg-purple-500/10 text-purple-600"
-                        )}>
-                          {entry.event_type.replace(/_/g, ' ')}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm max-w-xs truncate">
-                        {entry.description}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(entry.created_at)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm font-mono">
-                        {entry.ip_address || '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  auditHistory.map((entry) => {
+                    const direction = entry.data?.direction;
+                    const isReceived = direction === 'received';
+                    return (
+                      <TableRow key={entry.id} className="hover:bg-secondary/30 transition-colors">
+                        <TableCell className="font-mono text-sm">
+                          {entry.sender_id || entry.from_user_name || '—'}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {entry.receiver_id || '—'}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {entry.amount ? `₹${parseFloat(entry.amount).toFixed(2)}` : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <div className={cn(
+                            "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium",
+                            isReceived
+                              ? "bg-green-500/10 text-green-600 flex items-center"
+                              : "bg-blue-500/10 text-blue-600 flex items-center"
+                          )}>
+                            {isReceived ? (
+                              <>
+                                <ArrowDownLeft className="h-3 w-3" />
+                                Received
+                              </>
+                            ) : (
+                              <>
+                                <ArrowUpRight className="h-3 w-3" />
+                                Sent
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium",
+                            entry.status === 'success' || entry.status === 'completed'
+                              ? "bg-emerald-500/10 text-emerald-700"
+                              : entry.status === 'failed'
+                              ? "bg-red-500/10 text-red-700"
+                              : "bg-yellow-500/10 text-yellow-700"
+                          )}>
+                            {entry.status ? entry.status.charAt(0).toUpperCase() + entry.status.slice(1) : '—'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDate(entry.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

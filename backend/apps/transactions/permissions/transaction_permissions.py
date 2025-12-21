@@ -1,5 +1,2 @@
-from rest_framework.permissions import BasePermission
-
-class IsAccountOwner(BasePermission):
-    def has_object_permission(self, request, view, obj):
-        return obj.user == request.user
+# This file is kept for future use but currently not needed
+# All transaction operations use IsAuthenticated permission class

@@ -1,5 +1,2 @@
-from rest_framework.permissions import BasePermission
-
-class IsAuditAdmin(BasePermission):
-    def has_permission(self, request, view):
-        return request.user and request.user.is_staff
+# This file is kept for future use but currently not needed
+# All audit operations use IsAuthenticated permission class

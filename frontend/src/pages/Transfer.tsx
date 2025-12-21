@@ -6,6 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Send, Loader2, CheckCircle2, AlertCircle, User as UserIcon, IndianRupee } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { transferSchema } from '@/schemas/transaction.schema';
@@ -20,6 +30,8 @@ const Transfer: React.FC = () => {
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingTransferData, setPendingTransferData] = useState<TransferData | null>(null);
   const [validationErrors, setValidationErrors] = useState<{ 
     to_recipient_id?: string; 
     amount?: string; 

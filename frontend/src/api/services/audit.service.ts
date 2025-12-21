@@ -12,6 +12,14 @@ export interface AuditEntry {
   ip_address: string | null;
   created_at: string;
   is_immutable: boolean;
+  // Extracted transaction details from data
+  sender_id?: string | null;
+  receiver_id?: string | null;
+  amount?: string | null;
+  transaction_type?: string;
+  status?: string;
+  from_user_name?: string;
+  to_user_name?: string;
 }
 
 export interface AuditHistoryResponse {
@@ -26,6 +34,7 @@ export interface AuditFilters {
   user_id?: number;
   page?: number;
   page_size?: number;
+  ordering?: string;
 }
 
 export const auditService = {
@@ -44,10 +53,10 @@ export const auditService = {
    * Get current user's audit logs
    * GET /api/audit/logs/my_logs/
    */
-  getMyLogs: async (): Promise<AuditEntry[]> => {
-    const response = await apiClient.get<AuditEntry[]>('/api/audit/logs/my_logs/');
-    return response.data;
-  },
+getMyLogs: async (): Promise<AuditEntry[]> => {
+  const response = await apiClient.get<AuditEntry[]>('/api/audit/logs/my_logs/');
+  return response.data;
+},
 
   /**
    * Get single audit entry details

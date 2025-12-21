@@ -26,21 +26,17 @@ import {
   ChevronUp,
   ChevronDown,
   History as HistoryIcon,
-  Download,
   Search,
   Filter
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type SortField = 'id' | 'type' | 'amount' | 'counterparty' | 'timestamp';
 type SortOrder = 'asc' | 'desc';
 
 const History: React.FC = () => {
   const [auditHistory, setAuditHistory] = useState<AuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('timestamp');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,16 +46,18 @@ const History: React.FC = () => {
     setIsLoading(true);
     try {
       const filters: AuditFilters = {
-        ordering: `${sortOrder === 'desc' ? '-' : ''}${sortField}`,
+        ordering: `${sortOrder === 'desc' ? '-' : ''}created_at`,
       };
       
-      if (typeFilter !== 'all') {
-        filters.type = typeFilter as 'sent' | 'received';
-      }
-
       const response = await auditService.getHistory(filters);
-      setAuditHistory(response.results);
-      setTotalCount(response.count);
+      // Filter by type on client-side based on direction field
+      const allData = response.results || [];
+      const filteredByType = typeFilter === 'all' 
+        ? allData
+        : allData.filter(entry => entry.data?.direction === typeFilter);
+      
+      setAuditHistory(filteredByType);
+      setTotalCount(filteredByType.length);
     } catch (error) {
       console.error('Failed to fetch history:', error);
       toast({
@@ -74,48 +72,13 @@ const History: React.FC = () => {
 
   useEffect(() => {
     fetchHistory();
-  }, [sortField, sortOrder, typeFilter]);
+  }, [sortOrder, typeFilter]);
 
-  const handleExport = async (format: 'csv' | 'pdf') => {
-    setIsExporting(true);
-    try {
-      const blob = await auditService.exportHistory(format);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `audit-history-${new Date().toISOString().split('T')[0]}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast({
-        title: 'Export Complete',
-        description: `Your transaction history has been exported as ${format.toUpperCase()}`,
-      });
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast({
-        title: 'Export Failed',
-        description: 'Unable to export transaction history',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
-    }
+  const handleSort = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('desc');
-    }
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null;
+  const SortIcon = () => {
     return sortOrder === 'asc' ? (
       <ChevronUp className="h-4 w-4" />
     ) : (
@@ -142,15 +105,22 @@ const History: React.FC = () => {
   };
 
   // Filter by search query (client-side)
-  const filteredHistory = auditHistory.filter((entry) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      entry.id.toLowerCase().includes(query) ||
-      entry.counterparty.toLowerCase().includes(query) ||
-      entry.reference?.toLowerCase().includes(query)
-    );
-  });
+  const filteredHistory = auditHistory
+    .filter(entry => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        entry.sender_id?.toLowerCase().includes(query) ||
+        entry.receiver_id?.toLowerCase().includes(query) ||
+        entry.from_user_name?.toLowerCase().includes(query) ||
+        entry.to_user_name?.toLowerCase().includes(query) ||
+        entry.transaction_reference?.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      const dir = sortOrder === 'desc' ? -1 : 1;
+      return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+    });
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -161,26 +131,7 @@ const History: React.FC = () => {
             Complete audit trail of all your transactions
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport('csv')}
-            disabled={isExporting}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport('pdf')}
-            disabled={isExporting}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            PDF
-          </Button>
-        </div>
+        <div />
       </div>
 
       <Card className="border-border/50 shadow-card">
@@ -239,49 +190,17 @@ const History: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+                  <TableHead>ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Counterparty</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('id')}
+                    onClick={handleSort}
                   >
                     <div className="flex items-center gap-1">
-                      ID
-                      <SortIcon field="id" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('type')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Type
-                      <SortIcon field="type" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('amount')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Amount
-                      <SortIcon field="amount" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('counterparty')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Counterparty
-                      <SortIcon field="counterparty" />
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-secondary transition-colors"
-                    onClick={() => handleSort('timestamp')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Timestamp
-                      <SortIcon field="timestamp" />
+                      Date/Time
+                      <SortIcon />
                     </div>
                   </TableHead>
                   <TableHead>Status</TableHead>
@@ -307,50 +226,64 @@ const History: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredHistory.map((entry) => (
-                    <TableRow key={entry.id} className="hover:bg-secondary/30 transition-colors">
-                      <TableCell className="font-mono text-sm">
-                        #{entry.id.slice(0, 8)}
-                      </TableCell>
-                      <TableCell>
-                        <div className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                          entry.type === 'sent' 
-                            ? "bg-destructive/10 text-destructive" 
-                            : "bg-success/10 text-success"
+                  filteredHistory.map((entry) => {
+                    const direction = entry.data?.direction;
+                    const isReceived = direction === 'received';
+                    const counterparty = isReceived ? entry.from_user_name : entry.to_user_name;
+                    const amount = parseFloat(entry.amount || '0');
+                    
+                    return (
+                      <TableRow key={entry.id} className="hover:bg-secondary/30 transition-colors">
+                        <TableCell className="font-mono text-sm">
+                          #{entry.id}
+                        </TableCell>
+                        <TableCell>
+                          <div className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
+                            isReceived
+                              ? "bg-success/10 text-success" 
+                              : "bg-destructive/10 text-destructive"
+                          )}>
+                            {isReceived ? (
+                              <>
+                                <ArrowDownLeft className="h-3 w-3" />
+                                Received
+                              </>
+                            ) : (
+                              <>
+                                <ArrowUpRight className="h-3 w-3" />
+                                Sent
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className={cn(
+                          "font-semibold",
+                          isReceived ? "text-success" : "text-destructive"
                         )}>
-                          {entry.type === 'sent' ? (
-                            <ArrowUpRight className="h-3 w-3" />
-                          ) : (
-                            <ArrowDownLeft className="h-3 w-3" />
-                          )}
-                          {entry.type === 'sent' ? 'Sent' : 'Received'}
-                        </div>
-                      </TableCell>
-                      <TableCell className={cn(
-                        "font-semibold",
-                        entry.type === 'sent' ? "text-destructive" : "text-success"
-                      )}>
-                        {entry.type === 'sent' ? '-' : '+'}{formatCurrency(entry.amount)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {entry.counterparty}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(entry.timestamp)}
-                      </TableCell>
-                      <TableCell>
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                          entry.status === 'completed' && "bg-success/10 text-success",
-                          entry.status === 'pending' && "bg-warning/10 text-warning",
-                          entry.status === 'failed' && "bg-destructive/10 text-destructive"
-                        )}>
-                          {entry.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          {isReceived ? '+' : '-'}{formatCurrency(amount)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {counterparty || '—'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDate(entry.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                            entry.status === 'success' || entry.status === 'completed' 
+                              ? "bg-success/10 text-success"
+                              : entry.status === 'pending'
+                              ? "bg-warning/10 text-warning"
+                              : "bg-destructive/10 text-destructive"
+                          )}>
+                            {entry.status ? entry.status.charAt(0).toUpperCase() + entry.status.slice(1) : '—'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
