@@ -89,10 +89,8 @@ SECRET_KEY=change-me
 DEBUG=true
 ALLOWED_HOSTS=*
 
-
-
 # CORS (frontend origin)
-CORS_ALLOWED_ORIGINS=http://localhost:8080
+CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 Optional but recommended:

@@ -59,7 +59,6 @@ This document tracks all AI-assisted code generation, architectural decisions, a
 - Environment variable management (.env.example)
 
 ### Potential Enhancements (AI-Identified)
-- Real-time notifications using WebSockets (Celery + Redis)
 - Advanced audit filtering and analytics
 - Two-factor authentication
 - Rate limiting on API endpoints
