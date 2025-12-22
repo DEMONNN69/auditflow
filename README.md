@@ -17,7 +17,7 @@ AuditFlow is a mission-critical peer-to-peer transaction system built with Djang
 - Django + Django REST Framework
 - SQLite (db.sqlite3) for local development
 - SimpleJWT for authentication
-- Docker containerization
+
 
 ### Frontend
 - React 18
@@ -54,9 +54,7 @@ auditflow/
 │   ├── vite.config.ts
 │   ├── tailwind.config.ts
 │   └── package.json
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── nginx.conf
+├── AI_TOOL_USAGE_LOG.md
 └── README.md
 ```
 
@@ -65,7 +63,6 @@ auditflow/
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Docker & Docker Compose (optional)
 
 ### Backend Setup
 
