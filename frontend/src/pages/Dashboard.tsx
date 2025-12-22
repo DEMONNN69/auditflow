@@ -22,7 +22,9 @@ import {
   ChevronUp,
   ChevronDown,
   Wallet,
-  TrendingUp
+  TrendingUp,
+  Copy,
+  Check
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -60,6 +62,7 @@ const Dashboard: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [copiedRecipientId, setCopiedRecipientId] = useState(false);
 
   // Fetch user balance
   const fetchBalance = async () => {
@@ -244,16 +247,28 @@ const Dashboard: React.FC = () => {
               onClick={() => {
                 if (user?.recipient_id) {
                   navigator.clipboard.writeText(user.recipient_id);
+                  setCopiedRecipientId(true);
+                  setTimeout(() => setCopiedRecipientId(false), 2000);
                   toast({
                     title: 'Copied',
                     description: 'Recipient ID copied to clipboard',
                   });
                 }
               }}
-              className="text-xs text-muted-foreground mt-2 hover:text-accent transition-colors cursor-pointer"
-              title="Click to copy"
+              className="mt-4 w-full flex items-center justify-between gap-3 p-3 rounded-lg border-2 border-accent/30 bg-accent/5 hover:bg-accent/10 hover:border-accent/50 transition-all cursor-pointer group"
+              title="Click to copy your Recipient ID"
             >
-              Recipient ID: <span className="font-mono font-semibold">{user?.recipient_id || '—'}</span>
+              <div className="text-left flex-1">
+                <p className="text-xs text-muted-foreground font-medium">Your Recipient ID</p>
+                <p className="text-lg font-mono font-bold text-accent">{user?.recipient_id || '—'}</p>
+              </div>
+              <div className="flex-shrink-0">
+                {copiedRecipientId ? (
+                  <Check className="h-5 w-5 text-green-500 transition-all" />
+                ) : (
+                  <Copy className="h-5 w-5 text-accent group-hover:text-accent/80 transition-all" />
+                )}
+              </div>
             </button>
           </CardContent>
         </Card>

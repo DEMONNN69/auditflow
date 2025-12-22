@@ -25,6 +25,7 @@ import type { TransferResultType } from '@/components/TransferResult';
 const Transfer: React.FC = () => {
   const { user, refreshUser } = useAuth();
   
+  const [step, setStep] = useState<1 | 2>(1); // Step 1: Select recipient, Step 2: Enter amount/description
   const [recipientId, setRecipientId] = useState('');
   const [recipientInfo, setRecipientInfo] = useState<RecipientInfo | null>(null);
   const [isFetchingRecipient, setIsFetchingRecipient] = useState(false);
@@ -72,6 +73,20 @@ const Transfer: React.FC = () => {
     } else {
       setRecipientInfo(null);
     }
+  };
+
+  const handleProceed = () => {
+    if (recipientInfo && !validationErrors.to_recipient_id) {
+      setStep(2);
+      // Smooth scroll to amount section
+      setTimeout(() => {
+        document.getElementById('amount')?.focus();
+      }, 100);
+    }
+  };
+
+  const handleBack = () => {
+    setStep(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,6 +156,7 @@ const Transfer: React.FC = () => {
     if (resultStatus === 'success') {
       // Reset everything on success
       setResultStatus(null);
+      setStep(1);
       setRecipientId('');
       setRecipientInfo(null);
       setAmount('');
@@ -169,149 +185,199 @@ const Transfer: React.FC = () => {
         />
       )}
 
-      <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Send Money</h1>
-        <p className="mt-1 text-muted-foreground">
-          Transfer funds securely using Recipient ID
-        </p>
-      </div>
-
-      {/* User Balance Card */}
-      <Card className="border-border/50 shadow-sm bg-accent/5">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Your Balance</p>
-              <p className="text-3xl font-bold text-foreground">₹{user?.balance || '0.00'}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Your Recipient ID</p>
-              <p className="text-lg font-mono font-semibold text-accent">{user?.recipient_id}</p>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-screen">
+        {/* Left Column - Header & Info */}
+        <div className="lg:col-span-1 space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Send Money</h1>
+            <p className="mt-2 text-muted-foreground">
+              Transfer funds securely using Recipient ID
+            </p>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card className="border-border/50 shadow-elevated">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-accent" />
-            New Transfer
-          </CardTitle>
-          <CardDescription>
-            Enter the recipient's 10-digit ID to send money
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Removed old success message */}
-
-            <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient ID</Label>
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="recipient"
-                  placeholder="Enter 10-digit Recipient ID"
-                  value={recipientId}
-                  onChange={(e) => handleRecipientIdChange(e.target.value)}
-                  disabled={isLoading}
-                  maxLength={10}
-                  className={`pl-10 font-mono ${validationErrors.to_recipient_id ? 'border-destructive' : ''}`}
-                />
-                {isFetchingRecipient && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+          {/* User Balance Card */}
+          <Card className="border-border/50 shadow-sm bg-accent/5 sticky top-6">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Your Balance</p>
+                  <p className="text-3xl font-bold text-foreground">₹{user?.balance || '0.00'}</p>
+                </div>
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">Your Recipient ID</p>
+                  <p className="text-sm font-mono font-semibold text-accent bg-accent/10 p-2 rounded-lg text-center break-all">
+                    {user?.recipient_id}
+                  </p>
+                </div>
               </div>
-              {validationErrors.to_recipient_id && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.to_recipient_id}
-                </p>
-              )}
-              {recipientInfo && !validationErrors.to_recipient_id && (
-                <div className="mt-4 p-4 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/10 via-background to-accent/5 shadow-sm animate-fade-in">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/20">
-                      <CheckCircle2 className="h-6 w-6 text-accent" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Transfer Form */}
+        <Card className="lg:col-span-2 border-border/50 shadow-elevated">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-accent" />
+              New Transfer
+            </CardTitle>
+            <CardDescription>
+              Enter the recipient's 10-digit ID to send money
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* STEP 1: Recipient Selection */}
+              {step === 1 && (
+                <div className="space-y-5 animate-fade-in">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Who are you sending to?</Label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="recipient"
+                        placeholder="Enter their 10-digit ID"
+                        value={recipientId}
+                        onChange={(e) => handleRecipientIdChange(e.target.value)}
+                        disabled={isLoading}
+                        maxLength={10}
+                        className={`pl-10 font-mono text-base ${validationErrors.to_recipient_id ? 'border-destructive' : ''}`}
+                        autoFocus
+                      />
+                      {isFetchingRecipient && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-semibold text-muted-foreground">Recipient Details</p>
-                      <p className="text-lg font-bold text-foreground">{recipientInfo.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{recipientInfo.email}</p>
-                      <div className="mt-3 flex items-center gap-2 rounded-lg bg-background/60 px-3 py-2">
-                        <span className="text-xs font-medium text-muted-foreground">ID:</span>
-                        <span className="font-mono text-sm font-semibold text-accent">{recipientId}</span>
+                    {validationErrors.to_recipient_id && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.to_recipient_id}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Recipient Info Card */}
+                  {recipientInfo && !validationErrors.to_recipient_id && (
+                    <div className="mt-6 p-4 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/10 via-background to-accent/5 shadow-sm animate-in fade-in duration-300">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/20 flex-shrink-0">
+                          <CheckCircle2 className="h-6 w-6 text-accent" />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Recipient Found</p>
+                          <p className="text-xl font-bold text-foreground">{recipientInfo.full_name}</p>
+                          <p className="text-sm text-muted-foreground">{recipientInfo.email}</p>
+                          <div className="mt-3 flex items-center gap-2 rounded-lg bg-background/60 px-3 py-2 w-fit">
+                            <span className="text-xs font-medium text-muted-foreground">ID:</span>
+                            <span className="font-mono text-sm font-semibold text-accent">{recipientId}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    onClick={handleProceed}
+                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-6 text-base"
+                    disabled={!recipientInfo || isFetchingRecipient || validationErrors.to_recipient_id !== undefined}
+                  >
+                    Proceed to Payment
+                  </Button>
+                </div>
+              )}
+
+              {/* STEP 2: Amount & Description */}
+              {step === 2 && (
+                <div className="space-y-5 animate-fade-in">
+                  {/* Recipient Summary */}
+                  <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Sending to</p>
+                    <p className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-accent flex-shrink-0" />
+                      {recipientInfo?.full_name}
+                    </p>
+                  </div>
+
+                  {/* Amount */}
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">How much to send?</Label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        disabled={isLoading}
+                        className={`pl-10 text-2xl font-bold text-foreground placeholder:text-muted-foreground/30 ${validationErrors.amount ? 'border-destructive' : ''}`}
+                        autoFocus
+                      />
+                    </div>
+                    {validationErrors.amount && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.amount}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Add a note (optional)</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="E.g., Lunch money, Birthday gift..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      disabled={isLoading}
+                      className={`min-h-[80px] resize-none text-base ${validationErrors.description ? 'border-destructive' : ''}`}
+                    />
+                    {validationErrors.description && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleBack}
+                      className="flex-1 py-6 text-base"
+                      disabled={isLoading}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-6 text-base"
+                      disabled={isLoading || !amount}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Confirming...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          Send Money
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount (INR)</Label>
-              <div className="relative">
-                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  disabled={isLoading}
-                  className={`pl-10 text-lg font-semibold ${validationErrors.amount ? 'border-destructive' : ''}`}
-                />
-              </div>
-              {validationErrors.amount && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.amount}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Textarea
-                id="description"
-                placeholder="Add a note about this transfer"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={isLoading}
-                className={`min-h-[80px] resize-none ${validationErrors.description ? 'border-destructive' : ''}`}
-              />
-              {validationErrors.description && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {validationErrors.description}
-                </p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-medium"
-              disabled={isLoading || !recipientInfo || isFetchingRecipient}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing Transfer...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Send Money
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
