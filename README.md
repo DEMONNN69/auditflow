@@ -108,13 +108,8 @@ Configure API base URL (if backend not on default):
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-### Docker Deployment
 
-```bash
-docker-compose up -d
-```
-
-Note: Local development uses SQLite by default (`DJANGO_SETTINGS_MODULE` is `config.settings.development` in `manage.py`). The compose file includes Postgres and Redis services; you can keep them running, but the backend will still use SQLite unless you switch settings.
+Note: Local development uses SQLite by default (`DJANGO_SETTINGS_MODULE` is `config.settings.development` in `manage.py`). 
 
 ## API Documentation
 
