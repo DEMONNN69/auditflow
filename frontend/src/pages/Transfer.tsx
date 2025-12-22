@@ -19,6 +19,8 @@ import {
 import { Send, Loader2, CheckCircle2, AlertCircle, User as UserIcon, IndianRupee } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { transferSchema } from '@/schemas/transaction.schema';
+import { TransferResult } from '@/components/TransferResult';
+import type { TransferResultType } from '@/components/TransferResult';
 
 const Transfer: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -29,7 +31,6 @@ const Transfer: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingTransferData, setPendingTransferData] = useState<TransferData | null>(null);
   const [validationErrors, setValidationErrors] = useState<{ 
@@ -37,6 +38,10 @@ const Transfer: React.FC = () => {
     amount?: string; 
     description?: string 
   }>({});
+  
+  // Transfer result state
+  const [resultStatus, setResultStatus] = useState<TransferResultType | null>(null);
+  const [resultError, setResultError] = useState('');
 
   const fetchRecipientInfo = async (id: string) => {
     if (id.length !== 10) {
@@ -72,7 +77,6 @@ const Transfer: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationErrors({});
-    setSuccess(false);
 
     const transferData: TransferData = {
       to_recipient_id: recipientId,
@@ -105,41 +109,67 @@ const Transfer: React.FC = () => {
   };
 
   const confirmTransfer = async () => {
-    if (!pendingTransferData) return;
+    if (!pendingTransferData || !recipientInfo) return;
 
     setIsLoading(true);
     setShowConfirmDialog(false);
+    setResultStatus('transferring');
+    
     try {
       await transactionService.initiateTransfer(pendingTransferData);
-      setSuccess(true);
-      toast({
-        title: 'Transfer Successful',
-        description: `₹${pendingTransferData.amount.toFixed(2)} sent to ${recipientInfo?.full_name}`,
-        className: 'bg-success text-success-foreground',
-      });
       
-      // Reset form
+      // Show success state for 1.5 seconds before showing receipt
+      setTimeout(() => {
+        setResultStatus('success');
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Transfer failed:', error);
+      const errorMessage = error?.response?.data?.error || 'Unable to complete the transfer. Please try again.';
+      setResultError(errorMessage);
+      
+      // Show transferring for 1.5 seconds, then display failure
+      setTimeout(() => {
+        setResultStatus('failure');
+      }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleResultRetry = () => {
+    if (resultStatus === 'success') {
+      // Reset everything on success
+      setResultStatus(null);
       setRecipientId('');
       setRecipientInfo(null);
       setAmount('');
       setDescription('');
       setPendingTransferData(null);
-      await refreshUser();
-    } catch (error: any) {
-      console.error('Transfer failed:', error);
-      const errorMessage = error?.response?.data?.error || 'Unable to complete the transfer. Please try again.';
-      toast({
-        title: 'Transfer Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      refreshUser();
+    } else if (resultStatus === 'failure') {
+      // Go back to form on failure
+      setResultStatus(null);
+      setResultError('');
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
+    <>
+      {/* Show transfer result overlay when processing/success/failure */}
+      {resultStatus && (
+        <TransferResult
+          status={resultStatus}
+          amount={pendingTransferData?.amount.toFixed(2) || '0.00'}
+          recipientName={recipientInfo?.full_name || 'Recipient'}
+          recipientId={recipientInfo?.recipient_id || recipientId}
+          description={pendingTransferData?.description}
+          error={resultError}
+          onRetry={handleResultRetry}
+        />
+      )}
+
+      <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Send Money</h1>
         <p className="mt-1 text-muted-foreground">
@@ -175,12 +205,7 @@ const Transfer: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {success && (
-              <div className="flex items-center gap-2 p-4 rounded-lg bg-success/10 text-success animate-fade-in">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="font-medium">Transfer completed successfully!</span>
-              </div>
-            )}
+            {/* Removed old success message */}
 
             <div className="space-y-2">
               <Label htmlFor="recipient">Recipient ID</Label>
@@ -334,7 +359,8 @@ const Transfer: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </>
   );
 };
 
