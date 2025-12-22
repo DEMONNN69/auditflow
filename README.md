@@ -81,17 +81,6 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-#### Environment Variables
-Create a `.env` file in `backend/` (loaded by settings) with at least:
-
-```env
-SECRET_KEY=change-me
-DEBUG=true
-ALLOWED_HOSTS=*
-
-# CORS (frontend origin)
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
 
 Optional but recommended:
 - Create an admin user:
